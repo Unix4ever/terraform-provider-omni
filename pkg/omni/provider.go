@@ -148,6 +148,7 @@ func (p *OmniProvider) Resources(_ context.Context) []func() resource.Resource {
 		NewKubernetesHealthCheckResource,
 		NewEtcdBackupS3ConfigResource,
 		NewInstallationMediaPresetResource,
+		NewServiceAccountResource,
 	}
 }
 
@@ -155,5 +156,6 @@ func (p *OmniProvider) Resources(_ context.Context) []func() resource.Resource {
 func (p *OmniProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewUserDataSource,
+		NewServiceAccountDataSource,
 	}
 }

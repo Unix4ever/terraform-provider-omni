@@ -25,8 +25,10 @@ Early, but no longer a skeleton. Supported resources:
 | `omni_kubernetes_healthcheck` | Kubernetes health check configuration |
 | `omni_etcd_backup_s3_config` | Instance-wide S3 storage for etcd backups |
 | `omni_installation_media_preset` | Saved installation media presets (`omnictl media preset`) |
+| `omni_service_account` | Service accounts and their keys (`omnictl serviceaccount`) |
 
-Plus the `omni_user` data source. See [`docs/`](docs/) for the generated reference.
+Plus the `omni_user` and `omni_service_account` data sources. See [`docs/`](docs/) for the
+generated reference.
 
 ## Provider configuration
 
