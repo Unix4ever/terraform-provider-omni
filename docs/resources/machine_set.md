@@ -72,9 +72,13 @@ resource "omni_machine_set" "extra-workers" {
 - `bootstrap_spec` (Attributes) Restore the cluster etcd from a backup on bootstrap. Only valid for the control plane machine set. Immutable. (see [below for nested schema](#nestedatt--bootstrap_spec))
 - `delete_strategy` (Attributes) Strategy used when removing machines from the set. (see [below for nested schema](#nestedatt--delete_strategy))
 - `machine_class` (Attributes) Automatically allocate machines from a machine class instead of assigning them explicitly with omni_machine_set_node resources. Mutually exclusive with omni_machine_set_node. (see [below for nested schema](#nestedatt--machine_class))
-- `name` (String) The machine set ID. Must not be set for control planes. Immutable.
+- `name` (String) The machine set name, appended to the cluster name to form the resource ID. Must not be set for control planes, and defaults to `workers` for the default worker machine set. Immutable.
 - `update_strategy` (Attributes) Strategy used when updating machine configuration. Defaults to Rolling. (see [below for nested schema](#nestedatt--update_strategy))
 - `upgrade_strategy` (Attributes) Strategy used when upgrading Talos on the machines. (see [below for nested schema](#nestedatt--upgrade_strategy))
+
+### Read-Only
+
+- `id` (String) The generated machine set ID, composed as `<cluster>-<name>`. Use this to reference the machine set from other resources, such as `omni_machine_set_node`.
 
 <a id="nestedatt--bootstrap_spec"></a>
 ### Nested Schema for `bootstrap_spec`

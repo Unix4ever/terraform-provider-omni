@@ -67,6 +67,13 @@ func TestAccOmniClusterWithMachines(t *testing.T) {
 			Config: renderClusterWithMachinesConfig(t, name, talosVersion, kubernetesVersion, cps, workers),
 			Check: tfresource.ComposeAggregateTestCheckFunc(
 				tfresource.TestCheckResourceAttr("omni_cluster.test", "name", name),
+				// A named machine set keeps the configured name and exposes the cluster-prefixed Omni
+				// resource ID separately, so a re-apply converges (regression for #14).
+				tfresource.TestCheckResourceAttr("omni_machine_set.extra-workers", "name", "extra-workers"),
+				tfresource.TestCheckResourceAttr("omni_machine_set.extra-workers", "id", name+"-extra-workers"),
+				tfresource.TestCheckResourceAttr("omni_machine_set.workers", "name", "workers"),
+				tfresource.TestCheckResourceAttr("omni_machine_set.workers", "id", name+"-workers"),
+				tfresource.TestCheckResourceAttr("omni_machine_set.cp", "id", name+"-control-planes"),
 				testAccCheckClusterRunning(t.Context(), name, len(cps)+len(workers), clusterReadyTimeout),
 			),
 		}

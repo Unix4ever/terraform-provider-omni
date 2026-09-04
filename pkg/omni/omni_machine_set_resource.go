@@ -7,6 +7,7 @@ package omni
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/cosi-project/runtime/pkg/safe"
 	cosistate "github.com/cosi-project/runtime/pkg/state"
@@ -67,6 +68,7 @@ type machineSetResourceModel struct {
 	UpgradeStrategy *machineSetStrategyModel      `tfsdk:"upgrade_strategy"`
 	MachineClass    *machineSetMachineClassModel  `tfsdk:"machine_class"`
 	BootstrapSpec   *machineSetBootstrapSpecModel `tfsdk:"bootstrap_spec"`
+	ID              types.String                  `tfsdk:"id"`
 	Name            types.String                  `tfsdk:"name"`
 	Cluster         types.String                  `tfsdk:"cluster"`
 	Role            types.String                  `tfsdk:"role"`
@@ -113,10 +115,19 @@ func (r *machineSetResource) Schema(_ context.Context, _ frameworkresource.Schem
 		Description: "Manages an Omni machine set: a group of machines within a cluster that share a role " +
 			"(control plane or workers) and update behavior.",
 		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed: true,
+				Description: "The generated machine set ID, composed as `<cluster>-<name>`. Use this to reference the " +
+					"machine set from other resources, such as `omni_machine_set_node`.",
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"name": schema.StringAttribute{
-				Optional:    true,
-				Computed:    true,
-				Description: "The machine set ID. Must not be set for control planes. Immutable.",
+				Optional: true,
+				Computed: true,
+				Description: "The machine set name, appended to the cluster name to form the resource ID. Must not be set " +
+					"for control planes, and defaults to `workers` for the default worker machine set. Immutable.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 					stringplanmodifier.UseStateForUnknown(),
@@ -318,9 +329,7 @@ func (r *machineSetResource) Create(ctx context.Context, req frameworkresource.C
 		return
 	}
 
-	name := getMachineSetName(plan)
-
-	machineSet := omni.NewMachineSet(name)
+	machineSet := omni.NewMachineSet(machineSetID(plan))
 	setMachineSetLabels(machineSet, plan.Cluster.ValueString(), plan.Role.ValueString())
 
 	if err := r.applyMachineSetModel(plan, machineSet); err != nil {
@@ -340,7 +349,9 @@ func (r *machineSetResource) Create(ctx context.Context, req frameworkresource.C
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-func getMachineSetName(plan machineSetResourceModel) string {
+// machineSetID returns the Omni resource ID of the planned machine set. Omni prefixes it with the
+// cluster name, so it is kept out of the `name` attribute, which holds the configured name only.
+func machineSetID(plan machineSetResourceModel) string {
 	if plan.Role.ValueString() == machineSetRoleControlPlane {
 		return omni.ControlPlanesResourceID(plan.Cluster.ValueString())
 	}
@@ -350,6 +361,17 @@ func getMachineSetName(plan machineSetResourceModel) string {
 	}
 
 	return omni.AdditionalWorkersResourceID(plan.Cluster.ValueString(), plan.Name.ValueString())
+}
+
+// machineSetNameFromID strips the cluster prefix Omni adds to machine set IDs, recovering the name
+// so that refreshed and imported state matches the configuration. Control planes and default
+// workers come back as their well-known suffix.
+func machineSetNameFromID(id, cluster string) string {
+	if cluster == "" {
+		return id
+	}
+
+	return strings.TrimPrefix(id, cluster+"-")
 }
 
 // Read implements resource.Resource.
@@ -362,7 +384,14 @@ func (r *machineSetResource) Read(ctx context.Context, req frameworkresource.Rea
 		return
 	}
 
-	machineSet, err := safe.ReaderGetByID[*omni.MachineSet](ctx, r.data.state, state.Name.ValueString())
+	// State written by provider versions that stored the Omni resource ID in `name` has no `id` yet;
+	// fall back to it so such state is refreshed instead of being dropped and recreated.
+	id := state.ID.ValueString()
+	if id == "" {
+		id = state.Name.ValueString()
+	}
+
+	machineSet, err := safe.ReaderGetByID[*omni.MachineSet](ctx, r.data.state, id)
 	if err != nil {
 		if cosistate.IsNotFoundError(err) {
 			resp.State.RemoveResource(ctx)
@@ -390,7 +419,7 @@ func (r *machineSetResource) Update(ctx context.Context, req frameworkresource.U
 		return
 	}
 
-	machineSet, err := safe.StateUpdateWithConflicts(ctx, r.data.state, omni.NewMachineSet(plan.Name.ValueString()).Metadata(),
+	machineSet, err := safe.StateUpdateWithConflicts(ctx, r.data.state, omni.NewMachineSet(plan.ID.ValueString()).Metadata(),
 		func(machineSet *omni.MachineSet) error {
 			setMachineSetLabels(machineSet, plan.Cluster.ValueString(), plan.Role.ValueString())
 
@@ -417,7 +446,7 @@ func (r *machineSetResource) Delete(ctx context.Context, req frameworkresource.D
 		return
 	}
 
-	machineSet := omni.NewMachineSet(state.Name.ValueString())
+	machineSet := omni.NewMachineSet(state.ID.ValueString())
 
 	if err := r.data.state.TeardownAndDestroy(ctx, machineSet.Metadata()); err != nil {
 		if cosistate.IsNotFoundError(err) {
@@ -430,20 +459,23 @@ func (r *machineSetResource) Delete(ctx context.Context, req frameworkresource.D
 	}
 }
 
-// ImportState implements resource.ResourceWithImportState. Machine sets are imported by ID.
+// ImportState implements resource.ResourceWithImportState. Machine sets are imported by their full
+// Omni resource ID, e.g. `my-cluster-extra-workers`.
 func (r *machineSetResource) ImportState(ctx context.Context, req frameworkresource.ImportStateRequest, resp *frameworkresource.ImportStateResponse) {
-	frameworkresource.ImportStatePassthroughID(ctx, path.Root("name"), req, resp)
+	frameworkresource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
 // machineSetToModel populates the model from a MachineSet resource read from Omni.
 func (r *machineSetResource) machineSetToModel(machineSet *omni.MachineSet, model *machineSetResourceModel) {
 	value := machineSet.TypedSpec().Value
 
-	model.Name = types.StringValue(machineSet.Metadata().ID())
+	model.ID = types.StringValue(machineSet.Metadata().ID())
 
 	if cluster, ok := machineSet.Metadata().Labels().Get(omni.LabelCluster); ok {
 		model.Cluster = types.StringValue(cluster)
 	}
+
+	model.Name = types.StringValue(machineSetNameFromID(machineSet.Metadata().ID(), model.Cluster.ValueString()))
 
 	if _, ok := machineSet.Metadata().Labels().Get(omni.LabelControlPlaneRole); ok {
 		model.Role = types.StringValue(machineSetRoleControlPlane)

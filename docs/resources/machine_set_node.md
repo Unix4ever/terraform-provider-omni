@@ -27,7 +27,7 @@ resource "omni_machine_set" "control_planes" {
 # Explicitly assign a machine (by UUID) to the control plane machine set.
 resource "omni_machine_set_node" "cp0" {
   machine_id  = "430d882a-51a8-48b3-ae00-90c5b0b5b0b0"
-  machine_set = omni_machine_set.control_planes.name
+  machine_set = omni_machine_set.control_planes.id
   cluster     = omni_cluster.example.name
 }
 ```

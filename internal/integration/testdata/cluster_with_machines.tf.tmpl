@@ -28,17 +28,23 @@ resource "omni_machine_set" "workers" {
   cluster = omni_cluster.test.name
   role    = "workers"
 }
+
+resource "omni_machine_set" "extra-workers" {
+  name    = "extra-workers"
+  cluster = omni_cluster.test.name
+  role    = "workers"
+}
 {{ range $i, $id := .ControlPlanes }}
 resource "omni_machine_set_node" "cp{{ $i }}" {
   machine_id  = "{{ $id }}"
-  machine_set = omni_machine_set.cp.name
+  machine_set = omni_machine_set.cp.id
   cluster     = omni_cluster.test.name
 }
 {{ end }}
 {{- range $i, $id := .Workers }}
 resource "omni_machine_set_node" "worker{{ $i }}" {
   machine_id  = "{{ $id }}"
-  machine_set = omni_machine_set.workers.name
+  machine_set = omni_machine_set.extra-workers.id
   cluster     = omni_cluster.test.name
 }
 {{ end }}

@@ -141,7 +141,7 @@ resource "omni_machine_extensions" "workers" {
   cluster = omni_cluster.test.name
 
   selector = {
-    machine_set = omni_machine_set.workers.name
+    machine_set = omni_machine_set.workers.id
   }
 
   extensions = [%s]

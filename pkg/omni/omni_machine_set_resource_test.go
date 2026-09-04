@@ -29,9 +29,24 @@ func TestAccOmniMachineSetResource(t *testing.T) {
 				Config: testAccMachineSetConfig(name, talosVersion, kubernetesVersion),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("omni_machine_set.cp", "role", "controlplane"),
+					resource.TestCheckResourceAttr("omni_machine_set.cp", "name", "control-planes"),
+					resource.TestCheckResourceAttr("omni_machine_set.cp", "id", name+"-control-planes"),
 					resource.TestCheckResourceAttr("omni_machine_set.default-workers", "role", "workers"),
+					resource.TestCheckResourceAttr("omni_machine_set.default-workers", "name", "workers"),
+					resource.TestCheckResourceAttr("omni_machine_set.default-workers", "id", name+"-workers"),
+					// A named machine set keeps the configured name and exposes the cluster-prefixed
+					// Omni resource ID separately.
+					resource.TestCheckResourceAttr("omni_machine_set.extra-workers", "name", "extra-workers"),
+					resource.TestCheckResourceAttr("omni_machine_set.extra-workers", "id", name+"-extra-workers"),
 					resource.TestCheckResourceAttr("omni_config_patch.kubelet", "id", "400-"+name+"-kubelet"),
 				),
+			},
+			{ // the named machine set imports by its Omni resource ID without drift
+				ResourceName:                         "omni_machine_set.extra-workers",
+				ImportState:                          true,
+				ImportStateId:                        name + "-extra-workers",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "id",
 			},
 			{ // a second control plane machine set is rejected
 				Config:      testAccMachineSetConfigSecondControlPlane(name, talosVersion, kubernetesVersion),
@@ -88,6 +103,12 @@ resource "omni_machine_set" "cp" {
 }
 
 resource "omni_machine_set" "default-workers" {
+  cluster = omni_cluster.test.name
+  role    = "workers"
+}
+
+resource "omni_machine_set" "extra-workers" {
+  name    = "extra-workers"
   cluster = omni_cluster.test.name
   role    = "workers"
 }
