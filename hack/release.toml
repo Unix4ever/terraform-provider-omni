@@ -4,3 +4,42 @@ commit = "HEAD"
 project_name = "Omni Terraform Provider"
 github_repo = "siderolabs/terraform-provider-omni"
 ignore_deps = ["google.golang.org/grpc"]
+
+pre_release = true
+previous = "v0.1.0-alpha.3"
+
+[notes.etcd-backup-s3-config]
+title = "etcd Backup S3 Configuration"
+description = """\
+The new `omni_etcd_backup_s3_config` resource manages the instance-wide S3 target for etcd backups, complementing the per-cluster `backup_interval` on `omni_cluster`.
+"""
+
+[notes.installation-media-presets]
+title = "Installation Media Presets"
+description = """\
+The new `omni_installation_media_preset` resource manages installation media presets from Terraform.
+"""
+
+[notes.machine-class]
+title = "Machine Classes"
+description = """\
+The new `omni_machine_class` resource manages machine classes that either match existing machines by labels or auto-provision them through an infrastructure provider.
+"""
+
+[notes.service-accounts]
+title = "Service Accounts"
+description = """\
+The new `omni_service_account` resource and data source manage Omni service accounts from Terraform.
+"""
+
+[notes.infra-provider]
+title = "Infrastructure Providers"
+description = """\
+The new `omni_infra_provider` resource registers an infrastructure provider in Omni together with its service account and exposes the generated key for the provider to authenticate with.
+"""
+
+[notes.machine-install-disk]
+title = "Machine Install Disk"
+description = """\
+The new `omni_machine_install_disk` resource sets a machine's Talos install disk, either by device path or by a CEL disk selector expression.
+"""

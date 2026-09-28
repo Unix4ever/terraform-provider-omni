@@ -19,7 +19,7 @@
 # Usage: hack/test/run-qemu.sh [extra go test args...]
 #   OMNI_VERSION             Omni image tag to test against (default: latest).
 #   OMNI_QEMU_MACHINE_COUNT  Number of VMs to provision (default: 4 — 3 control planes + 1 worker).
-#   QEMU_TALOS_VERSION       Talos version for the maintenance boot media (default: 1.13.5).
+#   QEMU_TALOS_VERSION       Talos version for the maintenance boot media (default: 1.14.1).
 #   QEMU_MEMORY / QEMU_CPUS  Per-VM memory (MiB) and vCPUs (default: 3072 / 3).
 
 set -euo pipefail
@@ -47,7 +47,7 @@ QEMU_CIDR="172.20.0.0/24"
 WIREGUARD_IP="172.20.0.1"
 
 MACHINE_COUNT="${OMNI_QEMU_MACHINE_COUNT:-4}"
-QEMU_TALOS_VERSION="${QEMU_TALOS_VERSION:-1.13.5}"
+QEMU_TALOS_VERSION="${QEMU_TALOS_VERSION:-1.14.1}"
 QEMU_MEMORY="${QEMU_MEMORY:-3072}"
 QEMU_CPUS="${QEMU_CPUS:-3}"
 FACTORY_API_URL="${FACTORY_API_URL:-https://factory.talos.dev}"
